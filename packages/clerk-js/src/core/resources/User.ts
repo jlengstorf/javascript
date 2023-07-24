@@ -10,6 +10,7 @@ import type {
   EmailAddressResource,
   ExternalAccountJSON,
   ExternalAccountResource,
+  GetOrganizationInvitations,
   ImageResource,
   OrganizationMembershipResource,
   PhoneNumberResource,
@@ -37,6 +38,7 @@ import {
   EmailAddress,
   ExternalAccount,
   Image,
+  OrganizationInvitation,
   OrganizationMembership,
   PhoneNumber,
   SamlAccount,
@@ -248,6 +250,10 @@ export class User extends BaseResource implements UserResource {
     return Image.create(`${this.path()}/profile_image`, {
       file,
     });
+  };
+
+  getOrganizationInvitations = (params?: GetOrganizationInvitations) => {
+    return OrganizationInvitation.retrieve(params);
   };
 
   getOrganizationMemberships = async (

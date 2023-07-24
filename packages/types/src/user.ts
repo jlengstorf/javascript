@@ -1,3 +1,4 @@
+import type { ClerkPaginationParams } from './api';
 import type { BackupCodeResource } from './backupCode';
 import type { DeletedObjectResource } from './deletedObject';
 import type { EmailAddressResource } from './emailAddress';
@@ -150,3 +151,5 @@ export type UpdateUserPasswordParams = {
 };
 
 export type RemoveUserPasswordParams = Pick<UpdateUserPasswordParams, 'currentPassword'>;
+
+export type GetOrganizationInvitations = ClerkPaginationParams;

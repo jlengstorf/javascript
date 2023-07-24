@@ -1,6 +1,8 @@
 import type {
+  ClerkPaginationResponse,
   CreateBulkOrganizationInvitationParams,
   CreateOrganizationInvitationParams,
+  GetOrganizationInvitations,
   MembershipRole,
   OrganizationInvitationJSON,
   OrganizationInvitationResource,
@@ -52,6 +54,27 @@ export class OrganizationInvitation extends BaseResource implements Organization
     // TODO: Figure out what this is...
     // this.clerk.__unstable__invitationUpdate(newInvitation);
     return json.map(invitationJson => new OrganizationInvitation(invitationJson));
+  }
+
+  static async retrieve(params?: GetOrganizationInvitations): Promise<ClerkPaginationResponse<OrganizationInvitation>> {
+    return await BaseResource._fetch({
+      path: '/me/organization_invitations',
+      method: 'GET',
+      search: params as any,
+    })
+      .then(res => {
+        const { data: invites, total_count } =
+          res?.response as unknown as ClerkPaginationResponse<OrganizationInvitationJSON>;
+
+        return {
+          total_count,
+          data: invites.map(invitation => new OrganizationInvitation(invitation)),
+        };
+      })
+      .catch(() => ({
+        total_count: 0,
+        data: [],
+      }));
   }
 
   constructor(data: OrganizationInvitationJSON) {
