@@ -10,7 +10,7 @@ import type {
   EmailAddressResource,
   ExternalAccountJSON,
   ExternalAccountResource,
-  GetOrganizationInvitations,
+  GetUserOrganizationInvitations,
   ImageResource,
   OrganizationMembershipResource,
   PhoneNumberResource,
@@ -252,7 +252,7 @@ export class User extends BaseResource implements UserResource {
     });
   };
 
-  getOrganizationInvitations = (params?: GetOrganizationInvitations) => {
+  getOrganizationInvitations = (params?: GetUserOrganizationInvitations) => {
     return OrganizationInvitation.retrieve(params);
   };
 

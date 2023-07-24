@@ -1,4 +1,4 @@
-import type { ClerkPaginationParams } from './api';
+import type { ClerkPaginationParams, ClerkPaginationResponse } from './api';
 import type { BackupCodeResource } from './backupCode';
 import type { DeletedObjectResource } from './deletedObject';
 import type { EmailAddressResource } from './emailAddress';
@@ -6,6 +6,7 @@ import type { ExternalAccountResource } from './externalAccount';
 import type { ImageResource } from './image';
 import type { UserJSON } from './json';
 import type { OAuthScope } from './oauth';
+import type { OrganizationInvitationResource } from './organizationInvitation';
 import type { OrganizationMembershipResource } from './organizationMembership';
 import type { PhoneNumberResource } from './phoneNumber';
 import type { ClerkResource } from './resource';
@@ -94,6 +95,9 @@ export interface UserResource extends ClerkResource {
   getSessions: () => Promise<SessionWithActivitiesResource[]>;
   setProfileImage: (params: SetProfileImageParams) => Promise<ImageResource>;
   createExternalAccount: (params: CreateExternalAccountParams) => Promise<ExternalAccountResource>;
+  getOrganizationInvitations: (
+    params?: GetUserOrganizationInvitations,
+  ) => Promise<ClerkPaginationResponse<OrganizationInvitationResource>>;
   createTOTP: () => Promise<TOTPResource>;
   verifyTOTP: (params: VerifyTOTPParams) => Promise<TOTPResource>;
   disableTOTP: () => Promise<DeletedObjectResource>;
@@ -152,4 +156,4 @@ export type UpdateUserPasswordParams = {
 
 export type RemoveUserPasswordParams = Pick<UpdateUserPasswordParams, 'currentPassword'>;
 
-export type GetOrganizationInvitations = ClerkPaginationParams;
+export type GetUserOrganizationInvitations = ClerkPaginationParams;

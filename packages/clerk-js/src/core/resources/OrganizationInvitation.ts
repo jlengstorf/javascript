@@ -2,7 +2,7 @@ import type {
   ClerkPaginationResponse,
   CreateBulkOrganizationInvitationParams,
   CreateOrganizationInvitationParams,
-  GetOrganizationInvitations,
+  GetUserOrganizationInvitations,
   MembershipRole,
   OrganizationInvitationJSON,
   OrganizationInvitationResource,
@@ -56,7 +56,9 @@ export class OrganizationInvitation extends BaseResource implements Organization
     return json.map(invitationJson => new OrganizationInvitation(invitationJson));
   }
 
-  static async retrieve(params?: GetOrganizationInvitations): Promise<ClerkPaginationResponse<OrganizationInvitation>> {
+  static async retrieve(
+    params?: GetUserOrganizationInvitations,
+  ): Promise<ClerkPaginationResponse<OrganizationInvitation>> {
     return await BaseResource._fetch({
       path: '/me/organization_invitations',
       method: 'GET',
