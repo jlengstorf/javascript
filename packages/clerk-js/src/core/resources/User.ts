@@ -38,12 +38,12 @@ import {
   EmailAddress,
   ExternalAccount,
   Image,
-  OrganizationInvitation,
   OrganizationMembership,
   PhoneNumber,
   SamlAccount,
   SessionWithActivities,
   TOTP,
+  UserOrganizationInvitation,
   Web3Wallet,
 } from './internal';
 
@@ -253,7 +253,7 @@ export class User extends BaseResource implements UserResource {
   };
 
   getOrganizationInvitations = (params?: GetUserOrganizationInvitations) => {
-    return OrganizationInvitation.retrieve(params);
+    return UserOrganizationInvitation.retrieve(params);
   };
 
   getOrganizationMemberships = async (

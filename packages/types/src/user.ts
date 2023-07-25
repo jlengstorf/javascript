@@ -6,7 +6,6 @@ import type { ExternalAccountResource } from './externalAccount';
 import type { ImageResource } from './image';
 import type { UserJSON } from './json';
 import type { OAuthScope } from './oauth';
-import type { OrganizationInvitationResource } from './organizationInvitation';
 import type { OrganizationMembershipResource } from './organizationMembership';
 import type { PhoneNumberResource } from './phoneNumber';
 import type { ClerkResource } from './resource';
@@ -14,6 +13,7 @@ import type { SamlAccountResource } from './samlAccount';
 import type { SessionWithActivitiesResource } from './session';
 import type { OAuthStrategy } from './strategies';
 import type { TOTPResource } from './totp';
+import type { UserOrganizationInvitationResource } from './userOrganizationInvitation';
 import type { SnakeToCamel } from './utils';
 import type { Web3WalletResource } from './web3Wallet';
 
@@ -97,7 +97,7 @@ export interface UserResource extends ClerkResource {
   createExternalAccount: (params: CreateExternalAccountParams) => Promise<ExternalAccountResource>;
   getOrganizationInvitations: (
     params?: GetUserOrganizationInvitations,
-  ) => Promise<ClerkPaginationResponse<OrganizationInvitationResource>>;
+  ) => Promise<ClerkPaginationResponse<UserOrganizationInvitationResource>>;
   createTOTP: () => Promise<TOTPResource>;
   verifyTOTP: (params: VerifyTOTPParams) => Promise<TOTPResource>;
   disableTOTP: () => Promise<DeletedObjectResource>;
