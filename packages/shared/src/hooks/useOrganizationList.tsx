@@ -33,7 +33,7 @@ type UseOrganizationListReturn =
       userInvitations: {
         data: undefined;
         count: number;
-        // isLoading: false;
+        isLoading: false;
         isValidating: false;
         isError: false;
         size: undefined;
@@ -48,7 +48,7 @@ type UseOrganizationListReturn =
       userInvitations: {
         data: UserOrganizationInvitationResource[];
         count: number;
-        // isLoading: boolean;
+        isLoading: boolean;
         isValidating: boolean;
         isError: boolean;
         size: number | undefined;
@@ -97,7 +97,7 @@ export const useOrganizationList: UseOrganizationList = params => {
   const {
     data: userInvitationsData,
     isValidating: userInvitationsValidating,
-    // isLoading: userInvitationsLoading,
+    isLoading: userInvitationsLoading,
     error: userInvitationsError,
   } = useSWR(
     !triggerInfinite && shouldFetch && userInvitationsParams
@@ -127,7 +127,7 @@ export const useOrganizationList: UseOrganizationList = params => {
 
   const {
     data: userInvitationsDataInfinite,
-    // isLoading: userInvitationsLoadingInfinite,
+    isLoading: userInvitationsLoadingInfinite,
     isValidating: userInvitationsInfiniteValidating,
     error: userInvitationsInfiniteError,
     size,
@@ -153,7 +153,7 @@ export const useOrganizationList: UseOrganizationList = params => {
       userInvitations: {
         data: undefined,
         count: 0,
-        // isLoading: false,
+        isLoading: false,
         isValidating: false,
         isError: false,
         size: undefined,
@@ -163,7 +163,7 @@ export const useOrganizationList: UseOrganizationList = params => {
   }
 
   return {
-    isLoaded: !userInvitationsValidating,
+    isLoaded: !userInvitationsLoading,
     organizationList: createOrganizationList(user.organizationMemberships),
     setActive: clerk.setActive,
     createOrganization: clerk.createOrganization,
@@ -171,7 +171,7 @@ export const useOrganizationList: UseOrganizationList = params => {
       ? {
           data: userInvitationsDataInfinite?.map(a => a?.data).flat() ?? [],
           count: userInvitationsDataInfinite?.[userInvitationsDataInfinite?.length - 1]?.total_count || 0,
-          // isLoading: userInvitationsLoadingInfinite,
+          isLoading: userInvitationsLoadingInfinite,
           isValidating: userInvitationsInfiniteValidating,
           isError: !!userInvitationsInfiniteError,
           setSize,
@@ -180,7 +180,7 @@ export const useOrganizationList: UseOrganizationList = params => {
       : {
           data: userInvitationsData?.data ?? [],
           count: userInvitationsData?.total_count ?? 0,
-          // isLoading: userInvitationsLoading,
+          isLoading: userInvitationsLoading,
           isError: !!userInvitationsError,
           isValidating: userInvitationsValidating,
           size: undefined,
