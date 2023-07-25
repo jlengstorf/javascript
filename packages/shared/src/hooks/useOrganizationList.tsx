@@ -2,18 +2,24 @@ import type {
   ClerkPaginationResponse,
   CreateOrganizationParams,
   GetUserOrganizationInvitations,
-  OrganizationInvitationResource,
   OrganizationMembershipResource,
   OrganizationResource,
   SetActive,
+  UserOrganizationInvitationResource,
   UserResource,
 } from '@clerk/types';
+import { useMemo } from 'react';
 import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 
 import { useClerkInstanceContext, useUserContext } from './contexts';
 
 type UseOrganizationListParams = {
-  userInvitations?: true | GetUserOrganizationInvitations;
+  userInvitations?:
+    | true
+    | (GetUserOrganizationInvitations & {
+        aggregate: boolean;
+      });
 };
 
 type OrganizationList = ReturnType<typeof createOrganizationList>;
@@ -28,8 +34,10 @@ type UseOrganizationListReturn =
         data: undefined;
         count: number;
         isLoading: false;
-        // isSuccess: false;
-        // isError: false;
+        isValidating: false;
+        isError: false;
+        size: undefined;
+        setSize: undefined;
       };
     }
   | {
@@ -38,12 +46,17 @@ type UseOrganizationListReturn =
       createOrganization: (params: CreateOrganizationParams) => Promise<OrganizationResource>;
       setActive: SetActive;
       userInvitations: {
-        // data: Array<{ organization: OrganizationResource; invitation: OrganizationInvitationResource }>;
-        data: OrganizationInvitationResource[];
+        data: UserOrganizationInvitationResource[];
         count: number;
         isLoading: boolean;
-        // isSuccess: boolean;
-        // isError: boolean;
+        isValidating: boolean;
+        isError: boolean;
+        size: number | undefined;
+        setSize:
+          | ((
+              size: number | ((_size: number) => number),
+            ) => Promise<(ClerkPaginationResponse<UserOrganizationInvitationResource> | undefined)[] | undefined>)
+          | undefined;
       };
     };
 
@@ -51,27 +64,84 @@ type UseOrganizationList = (params?: UseOrganizationListParams) => UseOrganizati
 
 export const useOrganizationList: UseOrganizationList = params => {
   const { userInvitations } = params || {};
+
+  const triggerInfinite = userInvitations !== true ? userInvitations?.aggregate ?? false : false;
   const clerk = useClerkInstanceContext();
   const user = useUserContext();
 
-  const userInvitationsParams = userInvitations === true ? {} : userInvitations;
+  const userInvitationsParams = useMemo(() => {
+    if (!userInvitations) {
+      return undefined;
+    }
+    if (userInvitations === true) {
+      return {
+        limit: 10,
+        offset: 0,
+      };
+    }
+
+    return {
+      limit: userInvitations.limit ?? 10,
+      offset: userInvitations.offset ?? 0,
+    };
+  }, [userInvitations]);
 
   const shouldFetch = clerk.loaded && user;
 
   // Some gymnastics to adhere to the rules of hooks
   // We need to make sure useSWR is called on every render
   const fetchInvitations = !clerk.loaded
-    ? () => ({ data: [], total_count: 0 } as ClerkPaginationResponse<OrganizationInvitationResource>)
+    ? () => ({ data: [], total_count: 0 } as ClerkPaginationResponse<UserOrganizationInvitationResource>)
     : () => user?.getOrganizationInvitations(userInvitationsParams);
 
   const {
     data: userInvitationsData,
-    isValidating: userInvitationsLoading,
-    // mutate: mutateUserInvitations,
+    isValidating: userInvitationsValidating,
+    isLoading: userInvitationsLoading,
+    error: userInvitationsError,
   } = useSWR(
-    shouldFetch && userInvitationsParams ? cacheKey('userInvitations', user, userInvitationsParams) : null,
+    !triggerInfinite && shouldFetch && userInvitationsParams
+      ? cacheKey('userInvitations', user, userInvitationsParams)
+      : null,
     fetchInvitations,
   );
+
+  const getInfiniteKey = (
+    pageIndex: number,
+    previousPageData: ClerkPaginationResponse<UserOrganizationInvitationResource> | null,
+  ) => {
+    if (!shouldFetch || !userInvitationsParams || !triggerInfinite) {
+      return null;
+    }
+
+    const limit = userInvitationsParams?.limit;
+    const offset = userInvitationsParams?.offset + pageIndex * limit;
+
+    const param = {
+      limit,
+      offset,
+    };
+
+    return cacheKey('userInvitations', user, param);
+  };
+
+  const {
+    data: userInvitationsDataInfinite,
+    isLoading: userInvitationsLoadingInfinite,
+    isValidating: userInvitationsInfiniteValidating,
+    error: userInvitationsInfiniteError,
+    size,
+    setSize,
+  } = useSWRInfinite(getInfiniteKey, str => {
+    const { offset, limit } = JSON.parse(str);
+
+    return !clerk.loaded || !user
+      ? ({ data: [], total_count: 0 } as ClerkPaginationResponse<UserOrganizationInvitationResource>)
+      : user.getOrganizationInvitations({
+          offset: parseInt(offset),
+          limit: parseInt(limit),
+        });
+  });
 
   // TODO: Properly check for SSR user values
   if (!clerk.loaded || !user) {
@@ -84,6 +154,10 @@ export const useOrganizationList: UseOrganizationList = params => {
         data: undefined,
         count: 0,
         isLoading: false,
+        isValidating: false,
+        isError: false,
+        size: undefined,
+        setSize: undefined,
       },
     };
   }
@@ -93,11 +167,25 @@ export const useOrganizationList: UseOrganizationList = params => {
     organizationList: createOrganizationList(user.organizationMemberships),
     setActive: clerk.setActive,
     createOrganization: clerk.createOrganization,
-    userInvitations: {
-      data: userInvitationsData?.data ?? [],
-      count: userInvitationsData?.total_count ?? 0,
-      isLoading: userInvitationsLoading,
-    },
+    userInvitations: triggerInfinite
+      ? {
+          data: userInvitationsDataInfinite?.map(a => a?.data).flat() ?? [],
+          count: userInvitationsDataInfinite?.[userInvitationsDataInfinite?.length - 1]?.total_count || 0,
+          isLoading: userInvitationsLoadingInfinite,
+          isValidating: userInvitationsInfiniteValidating,
+          isError: !!userInvitationsInfiniteError,
+          setSize,
+          size,
+        }
+      : {
+          data: userInvitationsData?.data ?? [],
+          count: userInvitationsData?.total_count ?? 0,
+          isLoading: userInvitationsLoading,
+          isError: !!userInvitationsError,
+          isValidating: userInvitationsValidating,
+          size: undefined,
+          setSize: undefined,
+        },
   };
 };
 
@@ -109,5 +197,10 @@ function createOrganizationList(organizationMemberships: OrganizationMembershipR
 }
 
 function cacheKey(type: 'userInvitations', user: UserResource, pagination: GetUserOrganizationInvitations) {
-  return [type, user.id, pagination.offset, pagination.limit].filter(Boolean).join('-');
+  return JSON.stringify({
+    type,
+    userId: user.id,
+    offset: pagination.offset,
+    limit: pagination.limit,
+  });
 }
