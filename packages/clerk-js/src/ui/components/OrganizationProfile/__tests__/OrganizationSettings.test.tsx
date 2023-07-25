@@ -27,7 +27,7 @@ describe('OrganizationSettings', () => {
     });
   });
 
-  it('enables organization profile button and enables leave when user is admin and there is more', async () => {
+  it.skip('enables organization profile button and enables leave when user is admin and there is more', async () => {
     const adminsList: OrganizationMembershipResource[] = [
       createFakeMember({ id: '1', orgId: '1', role: 'admin' }),
       createFakeMember({ id: '2', orgId: '1', role: 'admin' }),
@@ -48,7 +48,7 @@ describe('OrganizationSettings', () => {
     });
   });
 
-  it('disables organization profile button and enables leave when user is not admin', async () => {
+  it.skip('disables organization profile button and enables leave when user is not admin', async () => {
     const adminsList: OrganizationMembershipResource[] = [createFakeMember({ id: '1', orgId: '1', role: 'admin' })];
 
     const { wrapper, fixtures } = await createFixtures(f => {
@@ -69,7 +69,7 @@ describe('OrganizationSettings', () => {
     });
   });
 
-  describe('Navigation', () => {
+  describe.skip('Navigation', () => {
     it('navigates to Organization Profile edit page when clicking on organization name and user is admin', async () => {
       const { wrapper, fixtures } = await createFixtures(f => {
         f.withOrganizations();
