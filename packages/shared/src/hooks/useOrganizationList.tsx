@@ -8,7 +8,7 @@ import type {
   UserOrganizationInvitationResource,
   UserResource,
 } from '@clerk/types';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
@@ -18,11 +18,32 @@ type UseOrganizationListParams = {
   userInvitations?:
     | true
     | (GetUserOrganizationInvitations & {
-        aggregate: boolean;
+        aggregate?: boolean;
+        controlled?: boolean;
       });
 };
 
 type OrganizationList = ReturnType<typeof createOrganizationList>;
+
+type CustomSetAction<T = unknown> = (size: T | ((_size: T) => T)) => void;
+type PaginatedDataAPI<T = unknown> = {
+  data: T[];
+  count: number;
+  isLoadingInitial: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  page: number;
+  // setPage: Dispatch<SetStateAction<number>>;
+  setPage: CustomSetAction<number>;
+
+  // fetchPrevious: () => void;
+  // fetchNext: () => void;
+};
+
+// Utility type to convert PaginatedDataAPI to properties as undefined, except booleans set to false
+type PaginatedDataAPIWithDefaults<T> = {
+  [K in keyof PaginatedDataAPI<T>]: PaginatedDataAPI<T>[K] extends boolean ? false : PaginatedDataAPI<T>[K] | undefined;
+};
 
 type UseOrganizationListReturn =
   | {
@@ -30,42 +51,31 @@ type UseOrganizationListReturn =
       organizationList: undefined;
       createOrganization: undefined;
       setActive: undefined;
-      userInvitations: {
-        data: undefined;
-        count: number;
-        isLoading: false;
-        isValidating: false;
-        isError: false;
-        size: undefined;
-        setSize: undefined;
-      };
+      userInvitations: PaginatedDataAPIWithDefaults<UserOrganizationInvitationResource>;
     }
   | {
       isLoaded: boolean;
       organizationList: OrganizationList;
       createOrganization: (params: CreateOrganizationParams) => Promise<OrganizationResource>;
       setActive: SetActive;
-      userInvitations: {
-        data: UserOrganizationInvitationResource[];
-        count: number;
-        isLoading: boolean;
-        isValidating: boolean;
-        isError: boolean;
-        size: number | undefined;
-        setSize:
-          | ((
-              size: number | ((_size: number) => number),
-            ) => Promise<(ClerkPaginationResponse<UserOrganizationInvitationResource> | undefined)[] | undefined>)
-          | undefined;
-      };
+      userInvitations: PaginatedDataAPI<UserOrganizationInvitationResource>;
     };
 
 type UseOrganizationList = (params?: UseOrganizationListParams) => UseOrganizationListReturn;
 
+// const usePaginatedOrInfinite = <T,>(params: PaginatedDataAPI<T>, { infinite = false }) => {
+//
+//
+//
+// };
+
 export const useOrganizationList: UseOrganizationList = params => {
   const { userInvitations } = params || {};
 
+  const [paginatedPage, setPaginatedPage] = useState(1);
   const triggerInfinite = userInvitations !== true ? userInvitations?.aggregate ?? false : false;
+  const dependsOnOffset = userInvitations !== true ? userInvitations?.controlled ?? true : true;
+
   const clerk = useClerkInstanceContext();
   const user = useUserContext();
 
@@ -86,13 +96,27 @@ export const useOrganizationList: UseOrganizationList = params => {
     };
   }, [userInvitations]);
 
+  /**
+   * These are needed in order to support the
+   */
+  const internalLimit = userInvitationsParams?.limit ?? 10;
+  const internalOffset = (paginatedPage - 1) * internalLimit;
+  const interalParams =
+    typeof userInvitationsParams === 'undefined'
+      ? undefined
+      : {
+          limit: internalLimit,
+          offset: internalOffset,
+        };
+  const paginatedParams = dependsOnOffset ? userInvitationsParams : interalParams;
+
   const shouldFetch = clerk.loaded && user;
 
   // Some gymnastics to adhere to the rules of hooks
   // We need to make sure useSWR is called on every render
   const fetchInvitations = !clerk.loaded
     ? () => ({ data: [], total_count: 0 } as ClerkPaginationResponse<UserOrganizationInvitationResource>)
-    : () => user?.getOrganizationInvitations(userInvitationsParams);
+    : () => user?.getOrganizationInvitations(paginatedParams);
 
   const {
     data: userInvitationsData,
@@ -100,9 +124,7 @@ export const useOrganizationList: UseOrganizationList = params => {
     isLoading: userInvitationsLoading,
     error: userInvitationsError,
   } = useSWR(
-    !triggerInfinite && shouldFetch && userInvitationsParams
-      ? cacheKey('userInvitations', user, userInvitationsParams)
-      : null,
+    !triggerInfinite && shouldFetch && paginatedParams ? cacheKey('userInvitations', user, paginatedParams) : null,
     fetchInvitations,
   );
 
@@ -143,6 +165,24 @@ export const useOrganizationList: UseOrganizationList = params => {
         });
   });
 
+  const isomorphicPage = useMemo(() => {
+    if (triggerInfinite) {
+      return size;
+    }
+    return paginatedPage;
+  }, [triggerInfinite, size, paginatedPage]);
+
+  const isomporphicSetPage: CustomSetAction<number> = useCallback(
+    numberOrgFn => {
+      if (triggerInfinite) {
+        void setSize(numberOrgFn);
+        return;
+      }
+      return setPaginatedPage(numberOrgFn);
+    },
+    [internalLimit, setSize],
+  );
+
   // TODO: Properly check for SSR user values
   if (!clerk.loaded || !user) {
     return {
@@ -152,12 +192,14 @@ export const useOrganizationList: UseOrganizationList = params => {
       setActive: undefined,
       userInvitations: {
         data: undefined,
-        count: 0,
+        count: undefined,
+        isLoadingInitial: false,
         isLoading: false,
-        isValidating: false,
         isError: false,
-        size: undefined,
-        setSize: undefined,
+        page: undefined,
+        setPage: undefined,
+        // size: undefined,
+        // setSize: undefined,
       },
     };
   }
@@ -171,20 +213,24 @@ export const useOrganizationList: UseOrganizationList = params => {
       ? {
           data: userInvitationsDataInfinite?.map(a => a?.data).flat() ?? [],
           count: userInvitationsDataInfinite?.[userInvitationsDataInfinite?.length - 1]?.total_count || 0,
-          isLoading: userInvitationsLoadingInfinite,
-          isValidating: userInvitationsInfiniteValidating,
+          isLoadingInitial: userInvitationsLoadingInfinite,
+          isLoading: userInvitationsInfiniteValidating,
           isError: !!userInvitationsInfiniteError,
-          setSize,
-          size,
+          page: isomorphicPage,
+          setPage: isomporphicSetPage,
+          // setSize,
+          // size,
         }
       : {
           data: userInvitationsData?.data ?? [],
           count: userInvitationsData?.total_count ?? 0,
-          isLoading: userInvitationsLoading,
+          isLoadingInitial: userInvitationsLoading,
           isError: !!userInvitationsError,
-          isValidating: userInvitationsValidating,
-          size: undefined,
-          setSize: undefined,
+          isLoading: userInvitationsValidating,
+          page: isomorphicPage,
+          setPage: isomporphicSetPage,
+          // size: undefined,
+          // setSize: undefined,
         },
   };
 };
