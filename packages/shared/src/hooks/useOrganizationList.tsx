@@ -63,12 +63,6 @@ type UseOrganizationListReturn =
 
 type UseOrganizationList = (params?: UseOrganizationListParams) => UseOrganizationListReturn;
 
-// const usePaginatedOrInfinite = <T,>(params: PaginatedDataAPI<T>, { infinite = false }) => {
-//
-//
-//
-// };
-
 export const useOrganizationList: UseOrganizationList = params => {
   const { userInvitations } = params || {};
 
