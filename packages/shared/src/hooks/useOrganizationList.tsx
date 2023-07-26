@@ -8,7 +8,7 @@ import type {
   UserOrganizationInvitationResource,
   UserResource,
 } from '@clerk/types';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
@@ -18,8 +18,8 @@ type UseOrganizationListParams = {
   userInvitations?:
     | true
     | (GetUserOrganizationInvitations & {
-        aggregate?: boolean;
-        controlled?: boolean;
+        infinite?: boolean;
+        keepPreviousData?: boolean;
       });
 };
 
@@ -33,11 +33,11 @@ type PaginatedDataAPI<T = unknown> = {
   isLoading: boolean;
   isError: boolean;
   page: number;
-  // setPage: Dispatch<SetStateAction<number>>;
-  setPage: CustomSetAction<number>;
-
-  // fetchPrevious: () => void;
-  // fetchNext: () => void;
+  fetchPage: CustomSetAction<number>;
+  fetchPrevious: () => void;
+  fetchNext: () => void;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 };
 
 // Utility type to convert PaginatedDataAPI to properties as undefined, except booleans set to false
@@ -65,46 +65,27 @@ type UseOrganizationList = (params?: UseOrganizationListParams) => UseOrganizati
 
 export const useOrganizationList: UseOrganizationList = params => {
   const { userInvitations } = params || {};
-
   const [paginatedPage, setPaginatedPage] = useState(1);
-  const triggerInfinite = userInvitations !== true ? userInvitations?.aggregate ?? false : false;
-  const dependsOnOffset = userInvitations !== true ? userInvitations?.controlled ?? true : true;
+
+  // Cache limit and offset until unmount
+  const offsetRef = useRef(userInvitations !== true ? userInvitations?.offset ?? 0 : 0);
+  const limitRef = useRef(userInvitations !== true ? userInvitations?.limit ?? 10 : 10);
+
+  const triggerInfinite = userInvitations !== true ? userInvitations?.infinite ?? false : false;
+  const internalKeepPreviousData = userInvitations !== true ? userInvitations?.keepPreviousData ?? false : false;
 
   const clerk = useClerkInstanceContext();
   const user = useUserContext();
 
-  const userInvitationsParams = useMemo(() => {
-    if (!userInvitations) {
-      return undefined;
-    }
-    if (userInvitations === true) {
-      return {
-        limit: 10,
-        offset: 0,
-      };
-    }
-
-    return {
-      limit: userInvitations.limit ?? 10,
-      offset: userInvitations.offset ?? 0,
-    };
-  }, [userInvitations]);
-
-  /**
-   * These are needed in order to support the
-   */
-  const internalLimit = userInvitationsParams?.limit ?? 10;
-  const internalOffset = (paginatedPage - 1) * internalLimit;
-  const interalParams =
-    typeof userInvitationsParams === 'undefined'
+  const paginatedParams =
+    typeof userInvitations === 'undefined'
       ? undefined
       : {
-          limit: internalLimit,
-          offset: internalOffset,
+          limit: limitRef.current,
+          offset: offsetRef.current + (paginatedPage - 1) * limitRef.current,
         };
-  const paginatedParams = dependsOnOffset ? userInvitationsParams : interalParams;
 
-  const shouldFetch = clerk.loaded && user;
+  const canFetch = !!(clerk.loaded && user);
 
   // Some gymnastics to adhere to the rules of hooks
   // We need to make sure useSWR is called on every render
@@ -118,20 +99,21 @@ export const useOrganizationList: UseOrganizationList = params => {
     isLoading: userInvitationsLoading,
     error: userInvitationsError,
   } = useSWR(
-    !triggerInfinite && shouldFetch && paginatedParams ? cacheKey('userInvitations', user, paginatedParams) : null,
+    !triggerInfinite && canFetch && paginatedParams ? cacheKey('userInvitations', user, paginatedParams) : null,
     fetchInvitations,
+    { keepPreviousData: internalKeepPreviousData },
   );
 
   const getInfiniteKey = (
     pageIndex: number,
     previousPageData: ClerkPaginationResponse<UserOrganizationInvitationResource> | null,
   ) => {
-    if (!shouldFetch || !userInvitationsParams || !triggerInfinite) {
+    if (!canFetch || !paginatedParams || !triggerInfinite) {
       return null;
     }
 
-    const limit = userInvitationsParams?.limit;
-    const offset = userInvitationsParams?.offset + pageIndex * limit;
+    const limit = limitRef.current;
+    const offset = offsetRef.current + pageIndex * limit;
 
     const param = {
       limit,
@@ -166,7 +148,7 @@ export const useOrganizationList: UseOrganizationList = params => {
     return paginatedPage;
   }, [triggerInfinite, size, paginatedPage]);
 
-  const isomporphicSetPage: CustomSetAction<number> = useCallback(
+  const isomorphicSetPage: CustomSetAction<number> = useCallback(
     numberOrgFn => {
       if (triggerInfinite) {
         void setSize(numberOrgFn);
@@ -174,8 +156,36 @@ export const useOrganizationList: UseOrganizationList = params => {
       }
       return setPaginatedPage(numberOrgFn);
     },
-    [internalLimit, setSize],
+    [setSize],
   );
+
+  const isomorphicData = useMemo(() => {
+    if (triggerInfinite) {
+      return userInvitationsDataInfinite?.map(a => a?.data).flat() ?? [];
+    }
+    return userInvitationsData?.data ?? [];
+  }, [triggerInfinite, userInvitationsDataInfinite, userInvitationsData]);
+
+  const isomorphicCount = useMemo(() => {
+    if (triggerInfinite) {
+      return userInvitationsDataInfinite?.[userInvitationsDataInfinite?.length - 1]?.total_count || 0;
+    }
+    return userInvitationsData?.total_count ?? 0;
+  }, [triggerInfinite, userInvitationsDataInfinite, userInvitationsData]);
+
+  /**
+   * Helpers
+   */
+  const fetchNext = useCallback(() => {
+    isomorphicSetPage(n => n + 1);
+  }, [isomorphicSetPage]);
+
+  const fetchPrevious = useCallback(() => {
+    isomorphicSetPage(n => n - 1);
+  }, [isomorphicSetPage]);
+
+  const hasNextPage = isomorphicCount - offsetRef.current > isomorphicPage * limitRef.current;
+  const hasPreviousPage = (isomorphicPage - 1) * limitRef.current > offsetRef.current;
 
   // TODO: Properly check for SSR user values
   if (!clerk.loaded || !user) {
@@ -191,40 +201,46 @@ export const useOrganizationList: UseOrganizationList = params => {
         isLoading: false,
         isError: false,
         page: undefined,
-        setPage: undefined,
-        // size: undefined,
-        // setSize: undefined,
+        fetchPage: undefined,
+        fetchNext: undefined,
+        fetchPrevious: undefined,
+        hasNextPage: false,
+        hasPreviousPage: false,
       },
     };
   }
 
   return {
-    isLoaded: !userInvitationsLoading,
+    isLoaded: canFetch,
     organizationList: createOrganizationList(user.organizationMemberships),
     setActive: clerk.setActive,
     createOrganization: clerk.createOrganization,
     userInvitations: triggerInfinite
       ? {
-          data: userInvitationsDataInfinite?.map(a => a?.data).flat() ?? [],
-          count: userInvitationsDataInfinite?.[userInvitationsDataInfinite?.length - 1]?.total_count || 0,
+          data: isomorphicData,
+          count: isomorphicCount,
           isLoadingInitial: userInvitationsLoadingInfinite,
           isLoading: userInvitationsInfiniteValidating,
           isError: !!userInvitationsInfiniteError,
           page: isomorphicPage,
-          setPage: isomporphicSetPage,
-          // setSize,
-          // size,
+          fetchPage: isomorphicSetPage,
+          fetchNext,
+          fetchPrevious,
+          hasNextPage,
+          hasPreviousPage,
         }
       : {
-          data: userInvitationsData?.data ?? [],
-          count: userInvitationsData?.total_count ?? 0,
+          data: isomorphicData,
+          count: isomorphicCount,
           isLoadingInitial: userInvitationsLoading,
           isError: !!userInvitationsError,
           isLoading: userInvitationsValidating,
           page: isomorphicPage,
-          setPage: isomporphicSetPage,
-          // size: undefined,
-          // setSize: undefined,
+          fetchPage: isomorphicSetPage,
+          fetchNext,
+          fetchPrevious,
+          hasNextPage,
+          hasPreviousPage,
         },
   };
 };
