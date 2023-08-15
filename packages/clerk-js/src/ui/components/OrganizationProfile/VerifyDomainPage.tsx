@@ -155,6 +155,7 @@ export const VerifyDomainPage = withCardStateProvider(() => {
             <Form.Control
               {...emailField.props}
               autoFocus
+              groupSuffix={`@${domain.name}`}
               required
             />
           </Form.ControlRow>

@@ -28,6 +28,7 @@ import { animations } from '../styledSystem';
 import { useFormControlFeedback } from '../utils';
 import { useCardState } from './contexts';
 import { useFormState } from './Form';
+import { InputGroup } from './InputGroup';
 import { PasswordInput } from './PasswordInput';
 import { PhoneInput } from './PhoneInput';
 import { RadioGroup } from './RadioGroup';
@@ -60,18 +61,33 @@ type FormControlProps = Omit<PropsOfComponent<typeof Input>, 'label' | 'placehol
     description?: string | LocalizationKey;
   }[];
   isFocused: boolean;
+  groupPreffix?: string;
+  groupSuffix?: string;
 };
 
 // TODO: Convert this into a Component?
-const getInputElementForType = (type: FormControlProps['type']) => {
+const getInputElementForType = ({
+  type,
+  groupPreffix,
+  groupSuffix,
+}: {
+  type: FormControlProps['type'];
+  groupPreffix: string | undefined;
+  groupSuffix: string | undefined;
+}) => {
   const CustomInputs = {
     password: PasswordInput,
     tel: PhoneInput,
     radio: RadioGroup,
   };
+
+  if (groupPreffix || groupSuffix) {
+    return InputGroup;
+  }
   if (!type) {
     return Input;
   }
+
   const customInput = type as keyof typeof CustomInputs;
   return CustomInputs[customInput] || Input;
 };
@@ -250,6 +266,8 @@ export const FormControl = forwardRef<HTMLInputElement, PropsWithChildren<FormCo
     setHasPassedComplexity,
     hasPassedComplexity,
     radioOptions,
+    groupPreffix,
+    groupSuffix,
     ...restInputProps
   } = props;
 
@@ -266,6 +284,15 @@ export const FormControl = forwardRef<HTMLInputElement, PropsWithChildren<FormCo
         radioOptions,
       },
     };
+
+    if (groupPreffix || groupSuffix) {
+      return {
+        ...inputProps,
+        groupPreffix,
+        groupSuffix,
+      };
+    }
+
     if (!props.type) {
       return inputProps;
     }
@@ -273,7 +300,12 @@ export const FormControl = forwardRef<HTMLInputElement, PropsWithChildren<FormCo
     return propMap[type] || inputProps;
   }, [restInputProps]);
 
-  const InputElement = getInputElementForType(props.type);
+  const InputElement = getInputElementForType({
+    type: props.type,
+    groupPreffix,
+    groupSuffix,
+  });
+
   const isCheckbox = props.type === 'checkbox';
 
   const { debounced: debouncedState } = useFormControlFeedback({
@@ -356,6 +388,8 @@ export const FormControl = forwardRef<HTMLInputElement, PropsWithChildren<FormCo
 
   const Input = (
     <InputElement
+      groupPreffix={groupPreffix}
+      groupSuffix={groupSuffix}
       elementDescriptor={descriptors.formFieldInput}
       elementId={descriptors.formFieldInput.setId(id)}
       hasError={!!errorMessage}
