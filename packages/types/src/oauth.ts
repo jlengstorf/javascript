@@ -19,6 +19,7 @@ export type DiscordOauthProvider = 'discord';
 export type TwitterOauthProvider = 'twitter';
 export type TwitchOauthProvider = 'twitch';
 export type LinkedinOauthProvider = 'linkedin';
+export type LinkedinOIDCOauthProvider = 'linkedin_oidc';
 export type DropboxOauthProvider = 'dropbox';
 export type AtlassianOauthProvider = 'atlassian';
 export type BitbucketOauthProvider = 'bitbucket';
@@ -45,6 +46,7 @@ export type OAuthProvider =
   | TwitterOauthProvider
   | TwitchOauthProvider
   | LinkedinOauthProvider
+  | LinkedinOIDCOauthProvider
   | DropboxOauthProvider
   | AtlassianOauthProvider
   | BitbucketOauthProvider
@@ -106,8 +108,14 @@ export const OAUTH_PROVIDERS: OAuthProviderData[] = [
   {
     provider: 'linkedin',
     strategy: 'oauth_linkedin',
-    name: 'LinkedIn',
+    name: 'LinkedIn (Deprecated)',
     docsUrl: 'https://clerk.com/docs/authentication/social-connection-with-linkedin',
+  },
+  {
+    provider: 'linkedin_oidc',
+    strategy: 'oauth_linkedin_oidc',
+    name: 'LinkedIn',
+    docsUrl: 'https://clerk.com/docs/authentication/social-connection-with-linkedin-oidc',
   },
   {
     provider: 'github',
