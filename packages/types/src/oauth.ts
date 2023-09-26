@@ -115,7 +115,7 @@ export const OAUTH_PROVIDERS: OAuthProviderData[] = [
     provider: 'linkedin_oidc',
     strategy: 'oauth_linkedin_oidc',
     name: 'LinkedIn',
-    docsUrl: 'https://clerk.com/docs/authentication/social-connection-with-linkedin-oidc',
+    docsUrl: 'https://clerk.com/docs/authentication/social-connections/linkedin-oidc',
   },
   {
     provider: 'github',
