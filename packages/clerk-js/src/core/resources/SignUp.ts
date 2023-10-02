@@ -1,3 +1,4 @@
+import { deprecated } from '@clerk/shared';
 import { ClerkRuntimeError, Poller } from '@clerk/shared';
 import type {
   AttemptEmailAddressVerificationParams,
@@ -160,6 +161,10 @@ export class SignUp extends BaseResource implements SignUpResource {
 
   attemptWeb3WalletVerification = async (params: AttemptWeb3WalletVerificationParams): Promise<SignUpResource> => {
     const { signature, generateSignature } = params || {};
+
+    if (generateSignature) {
+      deprecated('generateSignature', 'Use signature field instead.');
+    }
 
     if (signature) {
       return this.attemptVerification({ signature, strategy: 'web3_metamask_signature' });
