@@ -31,7 +31,9 @@ export async function __unstable__signJwt(
 
   const cryptoKey = await importKey(secret, algorithm, 'sign');
   const header = options.header || { typ: 'JWT' };
+
   header.alg = options.algorithm;
+  payload.iat = Math.floor(Date.now() / 1000);
 
   const encodedHeader = encodeJwtData(header);
   const encodedPayload = encodeJwtData(payload);

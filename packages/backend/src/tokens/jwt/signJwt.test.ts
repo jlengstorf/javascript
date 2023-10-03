@@ -8,9 +8,8 @@ import {
   publicJwks,
   signingJwks,
 } from '../fixtures';
-import { hasValidSignature } from './hasValidSignature';
 import { __unstable__signJwt } from './signJwt';
-import { decodeJwt } from './verifyJwt';
+import { decodeJwt, hasValidSignature } from './verifyJwt';
 
 export default (QUnit: QUnit) => {
   const { module, test } = QUnit;
