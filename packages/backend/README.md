@@ -129,7 +129,7 @@ Verifies a Clerk generated JWT (i.e. Clerk Session JWT and Clerk JWT templates).
 import { verifyJwt } from '@clerk/backend';
 
 verifyJwt(token, {
-  key: JsonWebKey,
+  key: JsonWebKey | string,
   issuer: '...',
   authorizedParties: '...',
 });
