@@ -1,5 +1,5 @@
 import runtime from '../../runtime';
-import isomorphicAtob from '../../shared/isomorphicAtob';
+import { isomorphicAtob } from '../../shared/isomorphicAtob';
 
 const algToHash: Record<string, string> = {
   RS256: 'SHA-256',
@@ -14,7 +14,7 @@ const jwksAlgToCryptoAlg: Record<string, string> = {
   RS512: RSA_ALGORITHM_NAME,
 };
 
-const algs = Object.keys(algToHash);
+export const algs = Object.keys(algToHash);
 
 // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/importKey#pkcs_8_import
 function pemToBuffer(secret: string): ArrayBuffer {
@@ -40,7 +40,7 @@ export function getCryptoAlgorithm(algorithmName: string): RsaHashedImportParams
   const name = jwksAlgToCryptoAlg[algorithmName];
 
   if (!hash || !name) {
-    throw new Error(`Unsupported algorithm ${algorithmName}, expected one of ${algs.join(', ')}`);
+    throw new Error(`Unsupported algorithm ${algorithmName}, expected one of ${algs.join(',')}.`);
   }
 
   return {
