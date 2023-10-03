@@ -1,6 +1,6 @@
 import type { PublishableKey } from '@clerk/types';
 
-import isomorphicAtob from './isomorphicAtob';
+import { isomorphicAtob } from './isomorphicAtob';
 
 const PUBLISHABLE_KEY_LIVE_PREFIX = 'pk_live_';
 const PUBLISHABLE_KEY_TEST_PREFIX = 'pk_test_';

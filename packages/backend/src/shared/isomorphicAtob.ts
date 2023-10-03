@@ -1,4 +1,4 @@
-const isomorphicAtob = (data: string) => {
+export const isomorphicAtob = (data: string) => {
   if (typeof atob !== 'undefined' && typeof atob === 'function') {
     return atob(data);
   } else if (typeof globalThis !== 'undefined' && globalThis.Buffer) {
@@ -6,5 +6,3 @@ const isomorphicAtob = (data: string) => {
   }
   return data;
 };
-
-export default isomorphicAtob;
